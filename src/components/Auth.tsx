@@ -17,32 +17,35 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const [grade, setGrade] = useState(GRADES[0]);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (isRegistering) {
-      if (!name || !email || !password || !grade) {
-        setError('Please fill in all fields');
-        return;
-      }
-      const newUser = authService.register(name, email, password, grade);
-      if (newUser) {
+    try {
+      if (isRegistering) {
+        if (!name || !email || !password || !grade) {
+          setError('Please fill in all fields');
+          return;
+        }
+        const newUser = await authService.register(email, name, password, grade);
         onAuthSuccess(newUser);
       } else {
-        setError('User already exists');
-      }
-    } else {
-      if (!email || !password) {
-        setError('Please enter email and password');
-        return;
-      }
-      const user = authService.login(email, password);
-      if (user) {
+        if (!email || !password) {
+          setError('Please enter email and password');
+          return;
+        }
+        const user = await authService.login(email, password);
         onAuthSuccess(user);
+      }
+    } catch (err: any) {
+      if (err.code === 'auth/invalid-credential') {
+        setError('Firebase authentication failed. Please check your Firebase project configuration and API keys.');
+      } else if (isRegistering) {
+        setError('Registration failed. The email might be already in use.');
       } else {
         setError('Invalid email or password. Please try again.');
       }
+      console.error("Auth error:", err);
     }
   };
 

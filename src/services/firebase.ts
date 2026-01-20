@@ -13,6 +13,8 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+console.log("Firebase Config:", firebaseConfig);
+
 const app = initializeApp(firebaseConfig);
 
 // These two lines are the most important—they "export" the tools to the rest of your app
