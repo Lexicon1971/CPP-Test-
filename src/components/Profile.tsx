@@ -33,6 +33,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
     }
   };
 
+  const lastPass = user.testAttempts?.filter(a => a.passed).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 max-w-2xl mx-auto">
       <h2 className="text-3xl font-bold text-gray-800 mb-6">My Profile</h2>
@@ -59,15 +61,19 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
           </select>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Access Password</label>
-          <input 
-            type="password" 
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none"
-            placeholder="Change your password"
-          />
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Last Passed Date</label>
+            <p className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+              {lastPass ? new Date(lastPass.date).toLocaleDateString() : 'N/A'}
+            </p>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Last Score</label>
+            <p className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+              {lastPass ? `${lastPass.score}%` : 'N/A'}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl">
