@@ -39,7 +39,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       }
     } catch (err: any) {
       if (err.code === 'auth/invalid-credential') {
-        setError('Firebase authentication failed. Please check your Firebase project configuration and API keys.');
+        setError('Firebase authentication failed. Please make sure you have a .env.local file with the correct Firebase API keys. See the README.md for more details.');
       } else if (isRegistering) {
         setError('Registration failed. The email might be already in use.');
       } else {
