@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Layout } from './components/Layout';
 import { Auth } from './components/Auth';
-import { Dashboard } from './components/Dashboard';
+import { Dashboard } from './components/Dashboard.tsx';
 import { Quiz } from './components/Quiz';
 import { Profile } from './components/Profile';
 import { AdminDashboard } from './components/AdminDashboard';
+import { Layout } from './components/Layout';
 import { authService } from './services/authService';
 import { emailService } from './services/emailService';
 import { User, AppState, TestResult } from './types';
