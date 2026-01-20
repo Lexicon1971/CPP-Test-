@@ -60,5 +60,32 @@ export const emailService = {
     console.groupEnd();
 
     return true;
+  },
+
+  sendBulkReminder: async (users: User[]) => {
+    console.group('BULK REMINDER EMAILS');
+    for (const user of users) {
+      const emailBody = `
+        GERMISTON BAPTIST CHURCH - CERTIFICATION EXPIRY REMINDER
+        ------------------------------------------------------
+        Dear ${user.name},
+
+        This is a friendly reminder that your Child Protection Certification has expired.
+        To ensure you remain compliant and eligible to volunteer, please log in to the portal
+        and retake the test at your earliest convenience.
+
+        Portal: [LINK]
+
+        A score of 80% is required to pass. Please reach out if you have any questions.
+
+        Regards,
+        GBC Administration
+        ------------------------------------------------------
+      `;
+      console.log(`SENT TO: ${user.email} - SUBJECT: Action Required: GBC Child Protection Certification Expired`);
+    }
+    console.groupEnd();
+
+    return true;
   }
 };

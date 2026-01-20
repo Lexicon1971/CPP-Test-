@@ -1,14 +1,31 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { authService } from '../services/authService';
 import { emailService } from '../services/emailService';
 import { User } from '../types';
 
 export const AdminDashboard: React.FC = () => {
-  const [users, setUsers] = useState<User[]>(authService.getUsers());
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'outstanding' | 'passed'>('all');
   const [reminderSent, setReminderSent] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const allUsers = await authService.getAllUsers();
+      setUsers(allUsers);
+    } catch (error) {
+      setStatusMessage({ text: 'Failed to fetch user data.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -27,16 +44,16 @@ export const AdminDashboard: React.FC = () => {
     return true;
   });
 
-  const sendReminders = () => {
+  const sendReminders = async () => {
     const outstanding = stats.filter(s => s.isExpired && s.intendToTeach);
-    console.group('BULK REMINDER EMAILS');
-    outstanding.forEach(u => {
-      console.log(`SENT TO: ${u.email} - SUBJECT: Action Required: GBC Child Protection Certification Expired`);
-    });
-    console.groupEnd();
     
-    setReminderSent(true);
-    setTimeout(() => setReminderSent(false), 5000);
+    try {
+      await emailService.sendBulkReminder(outstanding);
+      setReminderSent(true);
+      setTimeout(() => setReminderSent(false), 5000);
+    } catch (error) {
+      setStatusMessage({ text: 'Failed to send reminders.', type: 'error' });
+    }
   };
 
   const handleDeleteUser = async (user: User) => {
@@ -44,15 +61,9 @@ export const AdminDashboard: React.FC = () => {
     
     if (confirmed) {
       try {
-        // Send email first while we still have user data
         await emailService.sendAccountDeletedEmail(user);
-        
-        // Delete from local DB
-        authService.deleteUser(user.id);
-        
-        // Refresh local list
-        setUsers(authService.getUsers());
-        
+        await authService.deleteUser(user.id);
+        fetchUsers(); // Refresh the list
         setStatusMessage({ text: `Account for ${user.name} has been removed and notified.`, type: 'success' });
       } catch (e) {
         setStatusMessage({ text: `Error removing user. Please try again.`, type: 'error' });

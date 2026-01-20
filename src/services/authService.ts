@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword, 
   signOut 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore';
 import { User, TestResult } from '../types.ts';
 
 export const authService = {
@@ -28,13 +28,13 @@ export const authService = {
   },
 
   // 2. Register a new user
-  async register(email: string, name: string, password: string): Promise<User> {
+  async register(email: string, name: string, password: string, grade: string): Promise<User> {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const newUser: User = {
       id: userCredential.user.uid,
       email,
       name,
-      gradeTaught: '',
+      gradeTaught: grade,
       intendToTeach: true,
       testAttempts: [],
       isAdmin: false
@@ -76,7 +76,41 @@ export const authService = {
     await updateDoc(userRef, updateData);
   },
 
-  // 5. Logout
+  // 5. Update user profile
+  async updateUser(uid: string, data: Partial<User>) {
+    try {
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, data);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      throw error;
+    }
+  },
+
+  // 6. Get all users for admin dashboard
+  async getAllUsers(): Promise<User[]> {
+    try {
+      const usersCollection = collection(db, 'users');
+      const snapshot = await getDocs(usersCollection);
+      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+    } catch (error) {
+      console.error("Error fetching all users:", error);
+      throw error;
+    }
+  },
+
+  // 7. Delete a user
+  async deleteUser(uid: string) {
+    try {
+      const userRef = doc(db, 'users', uid);
+      await deleteDoc(userRef);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      throw error;
+    }
+  },
+
+  // 8. Logout
   async logout() {
     return signOut(auth);
   }
