@@ -17,16 +17,20 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
   const [password, setPassword] = useState(user.password || '');
   const [saved, setSaved] = useState(false);
 
-  const handleSave = () => {
-    authService.updateUser(user.id, {
-      name,
-      gradeTaught: grade,
-      intendToTeach,
-      password
-    });
-    setSaved(true);
-    onUpdate();
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    try {
+      await authService.updateUser(user.id, {
+        name,
+        gradeTaught: grade,
+        intendToTeach
+      });
+      setSaved(true);
+      onUpdate();
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error("Profile update error:", error);
+      alert("Failed to update profile. Please try again.");
+    }
   };
 
   return (
