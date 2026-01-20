@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Auth } from './components/Auth';
+import { Auth } from './components/Auth.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
-import { Quiz } from './components/Quiz';
-import { Profile } from './components/Profile';
-import { AdminDashboard } from './components/AdminDashboard';
-import { Layout } from './components/Layout';
-import { authService } from './services/authService';
-import { emailService } from './services/emailService';
-import { User, AppState, TestResult } from './types';
+import { Quiz } from './components/Quiz.tsx';
+import { Profile } from './components/Profile.tsx';
+import { AdminDashboard } from './components/AdminDashboard.tsx';
+import { Layout } from './components/Layout.tsx';
+import { authService } from './services/authService.ts';
+import { emailService } from './services/emailService.ts';
+import { User, AppState, TestResult } from './types.ts';
 
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>('AUTH');
