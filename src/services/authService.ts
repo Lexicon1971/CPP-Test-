@@ -11,12 +11,13 @@ export const authService = {
   // 1. Fetch user data from Firestore by UID (Defensive version)
   async getUserProfile(uid: string): Promise<User | null> {
     try {
+      if (!uid) return null;
       const userDoc = await getDoc(doc(db, 'users', uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
-        // Ensure testAttempts exists so the app doesn't crash reading .length
         return {
           ...data,
+          id: uid, // Ensure id is always present
           testAttempts: data.testAttempts || []
         } as User;
       }
@@ -54,9 +55,9 @@ export const authService = {
     }
     
     const data = userDoc.data();
-    // Safely inject an empty array if the user is new/empty
     return {
       ...data,
+      id: userCredential.user.uid, // Ensure id is always present
       testAttempts: data.testAttempts || []
     } as User;
   },
@@ -79,6 +80,9 @@ export const authService = {
   // 5. Update user profile
   async updateUser(uid: string, data: Partial<User>) {
     try {
+      if (!uid) {
+        throw new Error("User ID is missing, cannot update profile.");
+      }
       const userRef = doc(db, 'users', uid);
       await updateDoc(userRef, data);
     } catch (error) {
