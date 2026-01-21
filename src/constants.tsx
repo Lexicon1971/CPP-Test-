@@ -18,7 +18,6 @@ export const QUESTION_POOL: Question[] = [
     falseIndex: 3,
     explanation: "As per section 1.2, a child is defined as a person under 18 years of age."
   },
-  /* 
   {
     id: 2,
     text: "Who is the currently listed Sunday School Superintendent in the policy?",
@@ -27,7 +26,6 @@ export const QUESTION_POOL: Question[] = [
     falseIndex: 3,
     explanation: "Section 1.1 lists Shane Mayer as the Sunday School Superintendent (0696919643)."
   },
-  */
   {
     id: 3,
     text: "Which Act does this policy ensure legal compliance with?",

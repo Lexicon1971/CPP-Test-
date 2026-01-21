@@ -7,14 +7,43 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onStartQuiz }) => {
-  // Safety check: Ensure testAttempts is treated as an array even if it's missing
   const attempts = user.testAttempts || [];
-  
-  const latestResult = attempts.length > 0 
-    ? attempts[attempts.length - 1] 
-    : null;
-
   const passedOnce = attempts.some(t => t.passed);
+
+  // --- Compliance Status Logic ---
+  const lastSuccessfulTest = attempts
+    .filter(attempt => attempt.passed)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+  let complianceStatus: 'Compliant' | 'Expiring Soon' | 'Non-Compliant' = 'Non-Compliant';
+  let expiryDate: Date | null = null;
+  let message = 'You do not have a valid certification. Please complete the test.';
+
+  if (lastSuccessfulTest) {
+    const successDate = new Date(lastSuccessfulTest.date);
+    expiryDate = new Date(successDate);
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+    const now = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+    if (expiryDate < now) {
+      complianceStatus = 'Non-Compliant';
+    } else if (expiryDate <= thirtyDaysFromNow) {
+      complianceStatus = 'Expiring Soon';
+      message = `Your certification will expire on ${expiryDate.toLocaleDateString()}. Please re-test soon.`;
+    } else {
+      complianceStatus = 'Compliant';
+      message = `Your certification is valid until ${expiryDate.toLocaleDateString()}.`;
+    }
+  }
+
+  const statusStyles = {
+    'Compliant': 'bg-green-100 text-green-700 border-green-300',
+    'Expiring Soon': 'bg-yellow-100 text-yellow-700 border-yellow-300',
+    'Non-Compliant': 'bg-red-100 text-red-700 border-red-300',
+  };
 
   return (
     <div className="space-y-8">
@@ -40,6 +69,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onStartQuiz }) => {
              <span className="text-xs uppercase font-bold text-gray-400 tracking-widest">Total Attempts</span>
            </div>
         </div>
+      </div>
+
+      {/* --- Compliance Status Banner --- */}
+      <div className={`p-4 rounded-xl border-2 flex items-center gap-4 ${statusStyles[complianceStatus]}`}>
+        <span className="font-bold text-sm uppercase tracking-wider">{complianceStatus}</span>
+        <p className="text-sm">{message}</p>
       </div>
 
       <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
