@@ -16,22 +16,15 @@ export const AdminDashboard: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'outstanding' | 'passed'>('all');
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-  const fetchUsers = async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const allUsers = await authService.getAllUsers();
+    const unsubscribe = authService.listenToUsers((allUsers) => {
       // Filter out admin users from the main list
       setUsers(allUsers.filter(u => !u.isAdmin));
-    } catch (error) {
-      setStatusMessage({ text: 'Failed to fetch user data.', type: 'error' });
-      console.error("Error fetching users:", error);
-    } finally {
       setLoading(false);
-    }
-  };
+    });
 
-  useEffect(() => {
-    fetchUsers();
+    return () => unsubscribe();
   }, []);
 
   const usersWithCompliance = useMemo((): UserWithCompliance[] => {
@@ -95,7 +88,6 @@ export const AdminDashboard: React.FC = () => {
       try {
         await emailService.sendAccountDeletedEmail(user);
         await authService.deleteUser(user.id);
-        fetchUsers(); // Refresh the list
         setStatusMessage({ text: `Account for ${user.name} has been removed.`, type: 'success' });
       } catch (e) {
         setStatusMessage({ text: `Error removing user.`, type: 'error' });

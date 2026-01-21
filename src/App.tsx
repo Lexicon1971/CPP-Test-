@@ -4,7 +4,6 @@ import { auth } from './services/firebase.ts';
 import { Auth } from './components/Auth.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
 import { Quiz } from './components/Quiz.tsx';
-import { Profile } from './components/Profile.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { Layout } from './components/Layout.tsx';
 import { authService } from './services/authService.ts';
@@ -28,11 +27,13 @@ const App: React.FC = () => {
             setUser(userData);
             setAppState('DASHBOARD');
           } else {
+            // This is the key fix: ensure we go to AUTH if the user exists in Firebase Auth but not Firestore
             setAppState('AUTH');
           }
         } catch (error) {
           console.error("Session restoration error:", error);
           setAppState('AUTH');
+          setLoading(false); // Also ensure loading is false on error
         }
       } else {
         setAppState('AUTH');
@@ -105,8 +106,6 @@ const App: React.FC = () => {
         return user ? <Dashboard user={user} onStartQuiz={() => setAppState('QUIZ')} /> : null;
       case 'QUIZ':
         return <Quiz onComplete={handleQuizComplete} onCancel={() => setAppState('DASHBOARD')} />;
-      case 'PROFILE':
-        return user ? <Profile user={user} onUpdate={refreshUser} /> : null;
       case 'ADMIN':
         return user?.isAdmin ? <AdminDashboard /> : <div className="p-12 text-center text-red-500 font-bold">Unauthorized Access</div>;
       case 'RESULT':
@@ -114,7 +113,7 @@ const App: React.FC = () => {
           <div className="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 text-center space-y-6 max-w-2xl mx-auto">
             <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${currentResult?.passed ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
               <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {currentResult?.passed 
+                {currentResult?.passed
                   ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
                   : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12"></path>
                 }
@@ -127,26 +126,11 @@ const App: React.FC = () => {
               <span className="text-gray-500 text-sm uppercase font-bold tracking-widest block mb-1">Final Score</span>
               <span className="text-6xl font-black text-gray-800">{currentResult?.score}%</span>
             </div>
-            <div className="bg-gray-50 p-6 rounded-xl space-y-3">
-              <p className="text-gray-600 leading-relaxed">
-                {currentResult?.passed 
-                  ? "Well done! Your results have been recorded."
-                  : "You didn't reach the required 80%. Please try again."
-                }
-              </p>
-              <div className="flex items-center justify-center gap-2 text-sm font-semibold text-gray-400">
-                {sendingEmail ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-[#2E5D4E] border-t-transparent rounded-full animate-spin"></div>
-                    <span>Processing Results...</span>
-                  </>
-                ) : (
-                  <span>Results logged successfully.</span>
-                )}
-              </div>
-            </div>
+            <p className="text-gray-600 leading-relaxed max-w-md mx-auto">
+              {currentResult?.passed ? "Well done! You have demonstrated a strong understanding..." : "You didn't reach the required 80% passing grade..."}
+            </p>
             <div className="pt-6">
-              <button onClick={() => setAppState('DASHBOARD')} className="px-8 py-3 bg-[#2E5D4E] text-white rounded-xl font-bold hover:scale-105 transition-transform">
+              <button onClick={() => setAppState('DASHBOARD')} className="px-8 py-3 bg-[#2E5D4E] text-white rounded-xl font-bold">
                 Back to Dashboard
               </button>
             </div>
