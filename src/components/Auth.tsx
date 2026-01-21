@@ -13,8 +13,9 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [grade, setGrade] = useState('');
+  const [grade, setGrade] = useState(GRADES[0]);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,15 +83,22 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Password</label>
           <input 
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none pr-16"
             placeholder="••••••••"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 px-4 flex items-center text-sm font-bold text-gray-500 hover:text-[#2E5D4E] top-5"
+          >
+            {showPassword ? 'HIDE' : 'SHOW'}
+          </button>
         </div>
 
         {isRegistering && (
@@ -101,13 +109,12 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               onChange={(e) => setGrade(e.target.value)}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none bg-white"
             >
-              <option value="" disabled>Select a grade</option>
               {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
         )}
 
-        {error && <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg text-center font-medium">{error}</p>}
+        {error && <p className="text-red-500 text-sm bg-red-50 p-2 rounded-lg text-center font-medium">{error}</p>}
 
         <button 
           type="submit"
