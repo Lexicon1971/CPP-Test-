@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { authService } from '../services/authService';
 import { User } from '../types';
@@ -16,6 +15,7 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const [name, setName] = useState('');
   const [grade, setGrade] = useState(GRADES[0]);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,15 +83,22 @@ export const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Password</label>
           <input 
-            type="password" 
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#2E5D4E] outline-none pr-16"
             placeholder="••••••••"
           />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 px-4 flex items-center text-sm font-bold text-gray-500 hover:text-[#2E5D4E] top-5"
+          >
+            {showPassword ? 'HIDE' : 'SHOW'}
+          </button>
         </div>
 
         {isRegistering && (

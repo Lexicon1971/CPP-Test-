@@ -4,20 +4,27 @@ import { authService } from '../services/authService';
 import { emailService } from '../services/emailService';
 import { User } from '../types';
 
+// Define a new type that includes the calculated compliance status
+type UserWithCompliance = User & {
+  complianceStatus: 'Compliant' | 'Expiring Soon' | 'Non-Compliant';
+  expiryDate: Date | null;
+};
+
 export const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'outstanding' | 'passed'>('all');
-  const [reminderSent, setReminderSent] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
       const allUsers = await authService.getAllUsers();
-      setUsers(allUsers);
+      // Filter out admin users from the main list
+      setUsers(allUsers.filter(u => !u.isAdmin));
     } catch (error) {
       setStatusMessage({ text: 'Failed to fetch user data.', type: 'error' });
+      console.error("Error fetching users:", error);
     } finally {
       setLoading(false);
     }
@@ -27,82 +34,114 @@ export const AdminDashboard: React.FC = () => {
     fetchUsers();
   }, []);
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const filteredUsers = users.filter(u => !u.isAdmin);
-    
-    return filteredUsers.map(u => {
-      const lastSuccess = u.lastSuccessfulTestDate ? new Date(u.lastSuccessfulTestDate) : null;
-      const isExpired = !lastSuccess || (now.getTime() - lastSuccess.getTime() > 365 * 24 * 60 * 60 * 1000);
-      return { ...u, isExpired };
+  const usersWithCompliance = useMemo((): UserWithCompliance[] => {
+    return users.map(user => {
+      const attempts = user.testAttempts || [];
+      const lastSuccessfulTest = attempts
+        .filter(attempt => attempt.passed)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+      if (!lastSuccessfulTest) {
+        return { ...user, complianceStatus: 'Non-Compliant', expiryDate: null };
+      }
+
+      const successDate = new Date(lastSuccessfulTest.date);
+      const expiryDate = new Date(successDate);
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+      const now = new Date();
+      const thirtyDaysFromNow = new Date();
+      thirtyDaysFromNow.setDate(now.getDate() + 30);
+
+      if (expiryDate < now) {
+        return { ...user, complianceStatus: 'Non-Compliant', expiryDate };
+      }
+      if (expiryDate <= thirtyDaysFromNow) {
+        return { ...user, complianceStatus: 'Expiring Soon', expiryDate };
+      }
+      return { ...user, complianceStatus: 'Compliant', expiryDate };
     });
   }, [users]);
 
-  const filteredStats = stats.filter(s => {
-    if (filter === 'outstanding') return s.isExpired;
-    if (filter === 'passed') return !s.isExpired;
-    return true;
-  });
+  const filteredUsers = useMemo(() => {
+    if (filter === 'outstanding') {
+      return usersWithCompliance.filter(u => u.complianceStatus === 'Non-Compliant' || u.complianceStatus === 'Expiring Soon');
+    }
+    if (filter === 'passed') {
+      return usersWithCompliance.filter(u => u.complianceStatus === 'Compliant');
+    }
+    return usersWithCompliance;
+  }, [usersWithCompliance, filter]);
 
   const sendReminders = async () => {
-    const outstanding = stats.filter(s => s.isExpired && s.intendToTeach);
+    const outstanding = usersWithCompliance.filter(u => u.complianceStatus !== 'Compliant' && u.intendToTeach);
+    if (outstanding.length === 0) {
+      setStatusMessage({ text: 'No outstanding users to remind.', type: 'success' });
+      setTimeout(() => setStatusMessage(null), 5000);
+      return;
+    }
     
     try {
       await emailService.sendBulkReminder(outstanding);
-      setReminderSent(true);
-      setTimeout(() => setReminderSent(false), 5000);
+      setStatusMessage({ text: `Reminders sent to ${outstanding.length} staff member(s).`, type: 'success' });
     } catch (error) {
       setStatusMessage({ text: 'Failed to send reminders.', type: 'error' });
     }
+    setTimeout(() => setStatusMessage(null), 5000);
   };
 
   const handleDeleteUser = async (user: User) => {
-    const confirmed = window.confirm(`Are you sure you want to PERMANENTLY remove ${user.name} and all their test records? A final notification email will be sent to them.`);
-    
-    if (confirmed) {
+    if (window.confirm(`Are you sure you want to PERMANENTLY remove ${user.name}?`)) {
       try {
         await emailService.sendAccountDeletedEmail(user);
         await authService.deleteUser(user.id);
         fetchUsers(); // Refresh the list
-        setStatusMessage({ text: `Account for ${user.name} has been removed and notified.`, type: 'success' });
+        setStatusMessage({ text: `Account for ${user.name} has been removed.`, type: 'success' });
       } catch (e) {
-        setStatusMessage({ text: `Error removing user. Please try again.`, type: 'error' });
+        setStatusMessage({ text: `Error removing user.`, type: 'error' });
       }
-      
       setTimeout(() => setStatusMessage(null), 5000);
     }
   };
 
+  const statusStyles = {
+    'Compliant': 'bg-green-100 text-green-700',
+    'Expiring Soon': 'bg-yellow-100 text-yellow-700',
+    'Non-Compliant': 'bg-red-100 text-red-700',
+  };
+
+  const totalStaff = users.length;
+  const validCerts = usersWithCompliance.filter(u => u.complianceStatus === 'Compliant').length;
+  const outstandingCerts = totalStaff - validCerts;
+
   return (
     <div className="space-y-8">
       <div className="bg-[#2E5D4E] p-8 rounded-2xl shadow-xl text-white">
-        <h2 className="text-3xl font-bold mb-2">Church Administration Reports</h2>
-        <p className="opacity-80 mb-6">Monitoring compliance across all children's ministry staff.</p>
-        
+        <h2 className="text-3xl font-bold mb-2">Reports</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white bg-opacity-10 p-4 rounded-xl">
-            <span className="text-3xl font-black block">{stats.length}</span>
-            <span className="text-xs font-bold uppercase tracking-widest opacity-60">Total Staff</span>
+             <span className="text-3xl font-black block">{totalStaff}</span>
+             <span className="text-xs font-bold uppercase opacity-60">Total Staff</span>
           </div>
           <div className="bg-white bg-opacity-10 p-4 rounded-xl">
-            <span className="text-3xl font-black block">{stats.filter(s => !s.isExpired).length}</span>
-            <span className="text-xs font-bold uppercase tracking-widest opacity-60">Valid Certifications</span>
+             <span className="text-3xl font-black block">{validCerts}</span>
+             <span className="text-xs font-bold uppercase opacity-60">Valid Certifications</span>
           </div>
           <div className="bg-white bg-opacity-10 p-4 rounded-xl">
-            <span className="text-3xl font-black block text-red-200">{stats.filter(s => s.isExpired).length}</span>
-            <span className="text-xs font-bold uppercase tracking-widest opacity-60">Outstanding / Expired</span>
+             <span className="text-3xl font-black block text-red-200">{outstandingCerts}</span>
+             <span className="text-xs font-bold uppercase opacity-60">Outstanding / Expired</span>
           </div>
         </div>
       </div>
 
       {statusMessage && (
-        <div className={`p-4 rounded-xl font-bold text-center animate-fade-in ${statusMessage.type === 'success' ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200'}`}>
+        <div className={`p-4 rounded-xl font-bold text-center ${statusMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {statusMessage.text}
         </div>
       )}
 
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <div className="flex bg-gray-100 p-1 rounded-lg">
             {(['all', 'outstanding', 'passed'] as const).map(f => (
               <button
@@ -114,75 +153,49 @@ export const AdminDashboard: React.FC = () => {
               </button>
             ))}
           </div>
-          
-          <button 
-            onClick={sendReminders}
-            className="px-6 py-2 bg-red-500 text-white rounded-lg font-bold text-sm hover:bg-red-600 transition-all flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path></svg>
+          <button onClick={sendReminders} className="px-6 py-2 bg-red-500 text-white rounded-lg font-bold text-sm hover:bg-red-600 transition-all">
             Send Bulk Reminders
           </button>
         </div>
 
-        {reminderSent && (
-           <div className="bg-green-50 p-3 text-center text-green-700 font-bold text-sm animate-pulse">
-             Success: Reminders have been sent to all outstanding teachers who still intend to teach!
-           </div>
-        )}
-
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50 text-left text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">
-                <th className="px-6 py-4">Staff Member</th>
-                <th className="px-6 py-4">Grade</th>
-                <th className="px-6 py-4 text-center">Intends to Teach</th>
-                <th className="px-6 py-4">Last Success</th>
-                <th className="px-6 py-4">Status</th>
+            <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+              <tr>
+                <th className="px-6 py-4 text-left">Staff Member</th>
+                <th className="px-6 py-4 text-left">Grade</th>
+                <th className="px-6 py-4 text-center">Status</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredStats.map(s => (
-                <tr key={s.id} className="hover:bg-gray-50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-gray-800">{s.name}</p>
-                    <p className="text-xs text-gray-400">{s.email}</p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{s.gradeTaught}</td>
-                  <td className="px-6 py-4 text-center">
-                    {s.intendToTeach ? (
-                      <span className="text-green-500 font-bold text-xs uppercase">Yes</span>
-                    ) : (
-                      <span className="text-gray-300 font-bold text-xs uppercase">No</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {s.lastSuccessfulTestDate ? new Date(s.lastSuccessfulTestDate).toLocaleDateString() : 'Never'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${s.isExpired ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {s.isExpired ? 'Expired' : 'Valid'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => handleDeleteUser(s)}
-                      className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
-                      title="Delete User Account"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {loading ? (
+                <tr><td colSpan={4} className="p-12 text-center text-gray-400">Loading staff data...</td></tr>
+              ) : filteredUsers.length === 0 ? (
+                <tr><td colSpan={4} className="p-12 text-center text-gray-400 italic">No matching records found.</td></tr>
+              ) : (
+                filteredUsers.map(user => (
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="font-bold text-gray-800">{user.name}</p>
+                      <p className="text-xs text-gray-400">{user.email}</p>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{user.gradeTaught}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${statusStyles[user.complianceStatus]}`}>
+                        {user.complianceStatus.replace('-', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => handleDeleteUser(user)} className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
-          {filteredStats.length === 0 && (
-            <div className="p-12 text-center text-gray-400 italic">No matching records found.</div>
-          )}
         </div>
       </div>
     </div>
