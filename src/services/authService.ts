@@ -4,7 +4,7 @@ import {
   createUserWithEmailAndPassword, 
   signOut 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, arrayUnion, collection, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, arrayUnion, collection, deleteDoc, query, onSnapshot } from 'firebase/firestore';
 import { User, TestResult } from '../types.ts';
 
 export const authService = {
@@ -71,7 +71,7 @@ export const authService = {
     };
 
     if (result.passed) {
-      updateData.lastSuccessfulTestDate = result.date;
+      updateData.lastTestDate = result.date;
     }
 
     await updateDoc(userRef, updateData);
@@ -91,16 +91,15 @@ export const authService = {
     }
   },
 
-  // 6. Get all users for admin dashboard
-  async getAllUsers(): Promise<User[]> {
-    try {
-      const usersCollection = collection(db, 'users');
-      const snapshot = await getDocs(usersCollection);
-      return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
-    } catch (error) {
-      console.error("Error fetching all users:", error);
-      throw error;
-    }
+  // 6. Listen for real-time updates on all users for the admin dashboard
+  listenToUsers(callback: (users: User[]) => void): () => void {
+    const usersCollection = collection(db, 'users');
+    const q = query(usersCollection);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User));
+      callback(users);
+    });
+    return unsubscribe;
   },
 
   // 7. Delete a user
