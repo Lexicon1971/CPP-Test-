@@ -1,4 +1,3 @@
-import { Timestamp } from 'firebase/firestore';
 
 export interface Question {
   id: number;
@@ -13,9 +12,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  password?: string;
   gradeTaught: string;
   intendToTeach: boolean;
-  lastTestDate?: Timestamp;
+  lastSuccessfulTestDate?: string;
   testAttempts: TestResult[];
   isAdmin: boolean;
 }
@@ -33,4 +33,4 @@ export interface QuestionAttempt {
   isCorrect: boolean;
 }
 
-export type AppState = 'AUTH' | 'DASHBOARD' | 'QUIZ' | 'RESULT' | 'ADMIN';
+export type AppState = 'AUTH' | 'DASHBOARD' | 'QUIZ' | 'RESULT' | 'PROFILE' | 'ADMIN';

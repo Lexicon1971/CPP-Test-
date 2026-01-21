@@ -11,22 +11,22 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onNavigate, currentState }) => {
   return (
-    <div className="min-h-screen flex flex-col items-center">
-      <div className="w-full bg-white shadow-md border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate?.('DASHBOARD')}>
-            <div className="w-12 h-12 rounded-full bg-[#2E5D4E] flex items-center justify-center text-white text-xl font-bold">
-              GB
+    <div className="min-h-screen flex flex-col items-center bg-[#32CD32]">
+      <header className="w-full bg-white shadow-sm border-b border-gray-100 mb-8 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div 
+            className="flex items-center gap-4 cursor-pointer" 
+            onClick={() => onNavigate?.('DASHBOARD')}
+          >
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#2E5D4E] text-white">
+                <span className="text-xl font-bold">GB</span>
             </div>
             <div>
-              <h1 className="text-lg font-extrabold text-[#2E5D4E] tracking-tight">
-                Germiston Baptist Church
-              </h1>
-              <p className="text-xs text-gray-400 uppercase font-bold tracking-[0.2em]">
-                Child Protection Portal
-              </p>
+              <h1 className="text-xl font-bold text-[#2E5D4E] leading-tight">Germiston Baptist Church</h1>
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Child Protection Portal</p>
             </div>
           </div>
+          
           {user && (
             <div className="flex items-center gap-6">
               <nav className="hidden md:flex items-center gap-4 mr-4">
@@ -35,6 +35,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onNavi
                   className={`text-sm font-bold transition-colors ${currentState === 'DASHBOARD' ? 'text-[#2E5D4E]' : 'text-gray-400 hover:text-gray-600'}`}
                 >
                   Home
+                </button>
+                <button 
+                  onClick={() => onNavigate?.('PROFILE')}
+                  className={`text-sm font-bold transition-colors ${currentState === 'PROFILE' ? 'text-[#2E5D4E]' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                  My Profile
                 </button>
                 {user.isAdmin && (
                   <button 
@@ -61,15 +67,19 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, onLogout, onNavi
             </div>
           )}
         </div>
-      </div>
-      <main className="w-full max-w-4xl px-6 py-12">
+      </header>
+
+      <main className="w-full max-w-4xl px-6 pb-12 animate-fade-in">
         {children}
       </main>
-      <footer className="w-full py-8 mt-auto text-center text-gray-400 text-sm">
-        <p>© {new Date().getFullYear()} Germiston Baptist Church. Internal Policy Test Portal.</p>
-        <div className="mt-2 space-x-4">
-          <a href="#" className="hover:text-gray-600">Help Center</a>
-          <a href="#" className="hover:text-gray-600">Privacy Policy</a>
+
+      <footer className="w-full border-t border-gray-200 bg-white py-8 mt-auto">
+        <div className="max-w-5xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-sm">
+          <p>&copy; {new Date().getFullYear()} Germiston Baptist Church. Internal Policy Test Portal.</p>
+          <div className="flex gap-4">
+             <span className="hover:text-gray-600 cursor-help">Help Center</span>
+             <span className="hover:text-gray-600 cursor-help">Privacy Policy</span>
+          </div>
         </div>
       </footer>
     </div>
